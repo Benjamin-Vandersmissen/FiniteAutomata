@@ -64,6 +64,7 @@ public:
               const std::vector<Transition *> &transitions, const std::vector<char> &alphabet);
 
     State* getState(std::string name);
+    void toDotFormat(std::ostream& stream);
 };
 
 

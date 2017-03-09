@@ -238,4 +238,8 @@ char json_parser::readQuotedChar() {
     }
 }
 
+Automaton *json_parser::getAutomaton() const {
+    return automaton;
+}
+
 

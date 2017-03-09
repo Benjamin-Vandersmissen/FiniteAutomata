@@ -28,6 +28,8 @@ public:
     std::vector<Transition*> readTransitions();
     void expectQuotedString(std::string expected);
     bool getBool();
+
+    Automaton *getAutomaton() const;
 };
 
 

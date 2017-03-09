@@ -138,3 +138,16 @@ State *Automaton::getState(std::string name) {
     }
     return NULL;
 }
+
+void Automaton::toDotFormat(std::ostream &stream) {
+    stream << "digraph " << this->type << "{" << std::endl;
+    stream << "\tDummy ->" << this->startingState->getName() << ";" << std::endl;
+    stream << "\tDummy [style=invis];" << std::endl;
+    for(State* endstate : this->acceptStates){
+        stream << "\t" << endstate->getName() << "[shape=doublecircle];" << std::endl;
+    }
+    for(Transition* transition : this->transitions){
+        stream << "\t" <<transition->getBegin() << " -> " << transition->getEnd() << " [label=" << transition->getInput() <<"];" << std::endl;
+    }
+    stream << "}" << std::endl;
+}
