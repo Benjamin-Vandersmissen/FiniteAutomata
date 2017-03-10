@@ -50,14 +50,22 @@ const std::vector<Transition *> &State::getTransitions() const {
     return transitions;
 }
 
+State *State::transition(char c) {
+    for(Transition* transition : this->transitions){
+        if (c == transition->getInput()){
+            return transition->getEnd();
+        }
+    }
+}
+
 Transition::Transition(State* begin, State* end, char input) : begin(begin), end(end),
                                                                                        input(input) {}
 
-const State* Transition::getBegin() const {
+State * Transition::getBegin() const {
     return begin;
 }
 
-const State* Transition::getEnd() const {
+State * Transition::getEnd() const {
     return end;
 }
 
@@ -65,9 +73,7 @@ char Transition::getInput() const {
     return input;
 }
 
-State *Transition::transition(char c) {
-    return nullptr;
-}
+
 
 std::ostream& operator<<(std::ostream& stream, Transition& transition){
     stream <<  transition.getBegin()->getName() << ": " <<  transition.getInput() << " -> " << transition.getEnd()->getName();
@@ -156,13 +162,14 @@ void Automaton::toDotFormat(std::ostream &stream) {
     stream << "}" << std::endl;
 }
 
-std::string Automaton::transition(State *state, std::string string) {
+State* Automaton::transition(State *state, std::string string) {
     State * newState = state;
     for(char c : string){
         if (std::find(alphabet.begin(), alphabet.end(), c) == alphabet.end()){
             throw(std::invalid_argument("only characters allowed from the alphabet"));
         }
-
+        newState = newState->transition(c);
     }
+    return newState;
 }
 

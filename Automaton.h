@@ -20,13 +20,12 @@ private:
 public:
     Transition(State *begin, State* end, char input);
 
-    const State* getBegin() const;
+    State * getBegin() const;
 
-    const State* getEnd() const;
+    State * getEnd() const;
 
     char getInput() const;
 
-    State* transition(char c);
 };
 
 class State{
@@ -49,6 +48,8 @@ public:
     bool hasEachTransitionOnce(std::vector<char> inputs);
 
     const std::vector<Transition *> &getTransitions() const;
+
+    State* transition(char c);
 };
 
 
@@ -69,7 +70,7 @@ public:
 
     State* getState(std::string name);
     void toDotFormat(std::ostream& stream);
-    std::string transition(State* state, std::string string);
+    State* transition(State* state, std::string string);
 };
 
 

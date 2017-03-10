@@ -9,5 +9,6 @@ int main() {
     Automaton* automaton = parser.getAutomaton();
     automaton->toDotFormat(outputfile);
     outputfile.close();
+    std::cerr << automaton->transition(automaton->getState("A"), "100")->getName() << std::endl;
     return 0;
 }
