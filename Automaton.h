@@ -23,6 +23,8 @@ public:
     const std::string &getEnd() const;
 
     char getInput() const;
+
+    State* transition(char c);
 };
 
 class State{
@@ -65,6 +67,7 @@ public:
 
     State* getState(std::string name);
     void toDotFormat(std::ostream& stream);
+    std::string transition(State* state, std::string string);
 };
 
 
