@@ -3,12 +3,11 @@
 #include <fstream>
 
 int main() {
-    std::ifstream file("../DFA.json");
+    std::ifstream file("../test.json");
     json_parser parser(file);
     std::ofstream outputfile("../output.dot");
     Automaton* automaton = parser.getAutomaton();
     automaton->toDotFormat(outputfile);
     outputfile.close();
-    std::cout << "Hello, World!" << std::endl;
     return 0;
 }

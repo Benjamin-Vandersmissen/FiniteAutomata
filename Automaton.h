@@ -9,18 +9,20 @@
 #include <algorithm>
 #include <sstream>
 
+class State;
+
 
 class Transition{
 private:
-    std::string begin;
-    std::string end;
+    State* begin;
+    State* end;
     char input;
 public:
-    Transition(const std::string &begin, const std::string &end, char input);
+    Transition(State *begin, State* end, char input);
 
-    const std::string &getBegin() const;
+    const State* getBegin() const;
 
-    const std::string &getEnd() const;
+    const State* getEnd() const;
 
     char getInput() const;
 

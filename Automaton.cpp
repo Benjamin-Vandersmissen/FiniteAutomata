@@ -22,7 +22,7 @@ const std::string &State::getName() const {
 }
 
 void State::addTransition(Transition *transition) {
-    if (transition->getBegin() == this->name){
+    if (transition->getBegin()->getName() == this->name){
         this->transitions.push_back(transition);
     }
 }
@@ -50,14 +50,14 @@ const std::vector<Transition *> &State::getTransitions() const {
     return transitions;
 }
 
-Transition::Transition(const std::string &begin, const std::string &end, char input) : begin(begin), end(end),
+Transition::Transition(State* begin, State* end, char input) : begin(begin), end(end),
                                                                                        input(input) {}
 
-const std::string &Transition::getBegin() const {
+const State* Transition::getBegin() const {
     return begin;
 }
 
-const std::string &Transition::getEnd() const {
+const State* Transition::getEnd() const {
     return end;
 }
 
@@ -70,7 +70,7 @@ State *Transition::transition(char c) {
 }
 
 std::ostream& operator<<(std::ostream& stream, Transition& transition){
-    stream <<  transition.getBegin() << ": " <<  transition.getInput() << " -> " << transition.getEnd();
+    stream <<  transition.getBegin()->getName() << ": " <<  transition.getInput() << " -> " << transition.getEnd()->getName();
     return stream;
 }
 

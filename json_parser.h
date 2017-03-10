@@ -13,6 +13,8 @@ private:
     std::istream& in;
     Automaton* automaton;
 protected:
+    std::vector<State*> states;
+    std::vector<Transition*> transitions;
     State* readState();
     Transition* readTransition();
 public:

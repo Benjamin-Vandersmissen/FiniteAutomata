@@ -137,6 +137,7 @@ std::vector<State *> json_parser::readStates() {
             break;
         }
     }
+    this->states = states;
     return states;
 }
 
@@ -176,6 +177,7 @@ std::vector<Transition *> json_parser::readTransitions() {
             break;
         }
     }
+    this->transitions = transitions;
     return transitions;
 }
 
@@ -199,7 +201,20 @@ Transition *json_parser::readTransition() {
     input = readQuotedChar();
 
     expectChar('}');
-    Transition* transition = new Transition(from, to, input);
+    State* fromState = NULL;
+    State* toState = NULL;
+    for(State* state: states){
+        if(from == state->getName()){
+            fromState = state;
+        }
+        if(to == state->getName()){
+            toState = state;
+        }
+    }
+    if (fromState == NULL || toState == NULL){
+        throw(std::invalid_argument("Did not recognise that state"));
+    }
+    Transition* transition = new Transition(fromState, toState, input);
     return transition;
 }
 
