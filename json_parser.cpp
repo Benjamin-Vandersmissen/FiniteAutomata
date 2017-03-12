@@ -24,12 +24,7 @@ void json_parser::skip_whitespace() {
 }
 
 void json_parser::readAutomaton() {
-    skip_whitespace();
-    char c = getChar();
-    if(c != '{'){
-        throw(std::invalid_argument((std::string)"Expected { but got " + c + (std::string)" instead"));
-    }
-    skip_whitespace();
+    expectChar('{');
     expectQuotedString("type");
     std::string type;
     expectChar(':');

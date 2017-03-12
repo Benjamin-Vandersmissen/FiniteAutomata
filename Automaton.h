@@ -26,6 +26,7 @@ public:
 
     char getInput() const;
 
+    void setEnd(State *end);
 };
 
 class State{
@@ -50,6 +51,13 @@ public:
     const std::vector<Transition *> &getTransitions() const;
 
     State* transition(char c);
+
+    State(const std::string &name);
+
+    void reacheableStates(std::vector<State*>& states);
+
+    void setName(const std::string &name);
+
 };
 
 
@@ -64,6 +72,8 @@ private:
     std::vector<char> alphabet;
     State* startingState = NULL;
     std::vector<State*> acceptStates = {};
+protected:
+    bool TableFillingStep(State *state1, State *state2, std::vector<std::vector<bool>> &table);
 public:
     Automaton(const std::string &type, char epsilon, const std::vector<State *> &states,
               const std::vector<Transition *> &transitions, const std::vector<char> &alphabet);
@@ -71,6 +81,10 @@ public:
     State* getState(std::string name);
     void toDotFormat(std::ostream& stream);
     State* transition(State* state, std::string string);
+    std::vector<State*> reachableStates();
+    void deleteState(State* state);
+    void deleteAllUnreachableStates();
+    void TableFilling();
 };
 
 

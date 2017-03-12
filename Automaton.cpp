@@ -58,6 +58,22 @@ State *State::transition(char c) {
     }
 }
 
+State::State(const std::string &name) : name(name) {
+}
+
+void State::reacheableStates(std::vector<State *> &states) {
+    for(Transition* transition: this->transitions){
+        if (std::find(states.begin(), states.end(), transition->getEnd()) == states.end()){
+            states.push_back(transition->getEnd());
+            transition->getEnd()->reacheableStates(states);
+        }
+    }
+}
+
+void State::setName(const std::string &name) {
+    State::name = name;
+}
+
 Transition::Transition(State* begin, State* end, char input) : begin(begin), end(end),
                                                                                        input(input) {}
 
@@ -73,6 +89,9 @@ char Transition::getInput() const {
     return input;
 }
 
+void Transition::setEnd(State *end) {
+    Transition::end = end;
+}
 
 
 std::ostream& operator<<(std::ostream& stream, Transition& transition){
@@ -89,9 +108,9 @@ Automaton::Automaton(const std::string &type, char epsilon, const std::vector<St
                                                                                                                 transitions),
                                                                                                         alphabet(
                                                                                                                 alphabet) {
-    for(State* state1 : this->states){
+    for(State* otherState : this->states){
         for(Transition* transition : this->transitions){
-            state1->addTransition(transition);
+            otherState->addTransition(transition);
         }
     }
 
@@ -151,13 +170,14 @@ State *Automaton::getState(std::string name) {
 
 void Automaton::toDotFormat(std::ostream &stream) {
     stream << "digraph " << this->type << "{" << std::endl;
+    stream << "\tgraph [rankdir=LR]" << std::endl;
     stream << "\tDummy ->" << this->startingState->getName() << ";" << std::endl;
     stream << "\tDummy [style=invis];" << std::endl;
     for(State* endstate : this->acceptStates){
-        stream << "\t" << endstate->getName() << "[shape=doublecircle];" << std::endl;
+        stream << "\t\"" << endstate->getName() << "\"[shape=doublecircle];" << std::endl;
     }
     for(Transition* transition : this->transitions){
-        stream << "\t" <<transition->getBegin() << " -> " << transition->getEnd() << " [label=" << transition->getInput() <<"];" << std::endl;
+        stream << "\t\"" <<transition->getBegin()->getName() << "\" -> \"" << transition->getEnd()->getName() << "\" [label=" << transition->getInput() <<"];" << std::endl;
     }
     stream << "}" << std::endl;
 }
@@ -171,5 +191,147 @@ State* Automaton::transition(State *state, std::string string) {
         newState = newState->transition(c);
     }
     return newState;
+}
+
+std::vector<State *> Automaton::reachableStates() {
+    std::vector<State*> states = {this->startingState};
+    this->startingState->reacheableStates(states);
+    return states;
+}
+
+void Automaton::deleteState(State *state) {
+    //only deletes transitions FROM the state, all transitions TO the state are kept, so only delete eligible states
+    if(state == this->startingState) //cannot delete starting state
+        return;
+    std::vector<Transition*> copyTransitions = this->transitions;
+    for(Transition* transition : copyTransitions){
+        if (transition->getBegin() == state){
+            delete(transition);
+            this->transitions.erase(std::find(this->transitions.begin(), this->transitions.end(), transition));
+        }
+    }
+    this->states.erase(std::find(this->states.begin(), this->states.end(), state));
+    if (std::find(this->acceptStates.begin(), this->acceptStates.end(), state) != this->acceptStates.end())
+    this->acceptStates.erase(std::find(this->acceptStates.begin(), this->acceptStates.end(), state));
+
+    delete(state);
+}
+
+void Automaton::deleteAllUnreachableStates() {
+    std::vector<State*> reachablesStates = this->reachableStates();
+    std::vector<State*> copyStates = this->states;
+    for(State* state: copyStates){
+        if (std::find(reachablesStates.begin(), reachablesStates.end(), state) == reachablesStates.end()){
+            std::cerr << state->getName() << std::endl;
+            this->deleteState(state);
+        }
+    }
+}
+
+void Automaton::TableFilling() {
+    std::vector<std::vector<bool>> table;
+    for (int i = 1; i < states.size(); i++) {
+        std::vector<bool> row = {};
+        for (int j = 0; j < i; j++) {
+            row.push_back(this->states[i]->isAccepting() != this->states[j]->isAccepting());
+        }
+        table.push_back(row);
+    }
+    bool success = true;
+    while(success) {
+        success = false;
+        for (int i = 1; i < states.size(); i++) {
+            for (int j = 0; j < i; j++) {
+                if (table[i - 1][j]) {
+                    success = TableFillingStep(states[i], states[j], table) || success; //once succes => always success
+                }
+            }
+        }
+    }
+    success = true;
+    for (std::vector<bool> test : table) {
+        for (bool a : test) {
+            success = success && a;
+            std::cerr << a << ' ';
+        }
+        std::cerr << std::endl;
+    }
+    if (success){
+        return;
+    }else{
+        std::vector<std::vector<State*>> ToBeMerged = {};
+        std::vector<State*> subvector = {};
+        for (int i = 1; i < this->states.size(); i ++){
+            for(int j = 0; j < i; j++){
+                if (!table[i-1][j]){
+                    if (!(subvector.size() == 0 || std::find(subvector.begin(), subvector.end(), this->states[i]) != subvector.end() || std::find(subvector.begin(), subvector.end(), this->states[j]) != subvector.end())) {
+                        ToBeMerged.push_back(subvector);
+                    }
+                    if (std::find(subvector.begin(), subvector.end(), states[i]) == subvector.end())
+                        subvector.push_back(states[i]);
+                    if (std::find(subvector.begin(), subvector.end(), states[j]) == subvector.end())
+                        subvector.push_back(states[j]);
+                }
+            }
+        }
+        ToBeMerged.push_back(subvector);
+        for(std::vector<State*> test : ToBeMerged){
+            for(State* a : test){
+                std::cerr << a->getName() << ' ';
+            }
+            std::cerr << std::endl;
+        }
+        for(std::vector<State*> states : ToBeMerged){
+            for(Transition* transition : this->transitions){
+                if (std::find(states.begin(), states.end(), transition->getEnd()) != states.end()){
+                    transition->setEnd(states[0]);
+                }
+            }
+            std::string name = "{";
+            for(State* state: states){
+                name += state->getName();
+                if (state!= states.back()){
+                    name += ", ";
+                }
+                if (state != states.front()){
+                    this->deleteState(state);
+                }
+            }
+            name += "}";
+            states.front()->setName(name);
+        }
+    }
+}
+
+bool Automaton::TableFillingStep(State *state1, State *state2, std::vector<std::vector<bool>> &table) {
+    bool success = false;
+    for (int a = 1; a < states.size(); a++){
+        for(int b = 0; b < a; b++){
+            if ((this->states[a] == state1 && this->states[b] == state2) || (this->states[a] == state2 && this->states[b] == state1)){
+                continue;
+            }
+            for(Transition* transition1 : this->states[a]->getTransitions()){
+                State* state = NULL;
+                State* otherState = NULL;
+                if (transition1->getEnd() == state1){
+                    state = state1;
+                    otherState = state2;
+                }
+                else if (transition1->getEnd() == state2){
+                    state = state2;
+                    otherState = state1;
+                }
+                if (state != NULL){
+                    for(Transition* transition2: this->states[b]->getTransitions()){
+                        if (transition2->getEnd() == otherState && !table[a-1][b]){
+                            table[a-1][b] = true;
+                            success = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return success;
 }
 
