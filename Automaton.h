@@ -104,7 +104,7 @@ public:
     std::vector<State*> reachableStates();
     void deleteState(State* state);
     void deleteAllUnreachableStates();
-    std::vector<std::vector<State *>> TableFilling(bool compare, std::ostream &stream = std::cout);
+    std::vector<std::vector<State *>> TableFilling(bool compare = false, std::ostream &stream = std::cout);
 };
 
 bool areEquivalent(Automaton *automaton1, Automaton *automaton2);

@@ -219,7 +219,7 @@ State *Automaton::getState(std::string name) {
 void Automaton::toDotFormat(std::ostream &stream) {
     stream << "digraph " << this->type << "{" << std::endl;
     stream << "\tgraph [rankdir=LR]" << std::endl;
-    stream << "\tDummy ->" << this->startingState->getName() << ";" << std::endl;
+    stream << "\tDummy -> \"" << this->startingState->getName() << "\" ;" << std::endl;
     stream << "\tDummy [style=invis];" << std::endl;
     for(State* endstate : this->acceptStates){
         stream << "\t\"" << endstate->getName() << "\"[shape=doublecircle];" << std::endl;
@@ -353,9 +353,16 @@ std::vector<std::vector<State *>> Automaton::TableFilling(bool compare, std::ost
             return ToBeMerged;
         }
         for(std::vector<State*> states : ToBeMerged){
+            State* stateToBeKept;
+            if (std::find(states.begin(), states.end(), this->startingState) != states.end()){
+                stateToBeKept = this->startingState;
+            }else{
+                stateToBeKept = states.front();
+            }
+
             for(Transition* transition : this->transitions){
                 if (std::find(states.begin(), states.end(), transition->getEnd()) != states.end()){
-                    transition->setEnd(states[0]);
+                    transition->setEnd(stateToBeKept);
                 }
             }
             std::string name = "{";
@@ -364,14 +371,15 @@ std::vector<std::vector<State *>> Automaton::TableFilling(bool compare, std::ost
                 if (state!= states.back()){
                     name += ", ";
                 }
-                if (state != states.front()){
+                if (state != stateToBeKept){
                     this->deleteState(state);
                 }
             }
             name += "}";
-            states.front()->setName(name);
+            stateToBeKept->setName(name);
         }
     }
+    return {{}};
 }
 
 bool Automaton::TableFillingStep(State *state1, State *state2, std::vector<std::vector<bool>> &table) {
