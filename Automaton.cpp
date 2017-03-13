@@ -22,7 +22,7 @@ const std::string &State::getName() const {
 }
 
 void State::addTransition(Transition *transition) {
-    if (transition->getBegin()->getName() == this->name){
+    if (transition->getBegin()->getName() == this->name && std::find(this->transitions.begin(), this->transitions.end(), transition) == this->transitions.end()){
         this->transitions.push_back(transition);
     }
 }
@@ -74,6 +74,25 @@ void State::setName(const std::string &name) {
     State::name = name;
 }
 
+std::vector<State *> State::Eclose(char epsilon, std::vector<State *> &states) {
+    //should only be called from the parent automaton, to determine the epsilon and to check if the automaton really is an eNFA
+    for(Transition* transition : this->transitions){
+        if (transition->getInput() == epsilon && std::find(states.begin(), states.end(), transition->getEnd()) == states.end()){
+            states.push_back(transition->getEnd());
+            transition->getEnd()->Eclose(epsilon, states);
+        }
+    }
+    return states;
+}
+
+void State::setAccepting(bool accepting) {
+    State::accepting = accepting;
+}
+
+void State::setStarting(bool starting) {
+    State::starting = starting;
+}
+
 Transition::Transition(State* begin, State* end, char input) : begin(begin), end(end),
                                                                                        input(input) {}
 
@@ -97,6 +116,35 @@ void Transition::setEnd(State *end) {
 std::ostream& operator<<(std::ostream& stream, Transition& transition){
     stream <<  transition.getBegin()->getName() << ": " <<  transition.getInput() << " -> " << transition.getEnd()->getName();
     return stream;
+}
+
+bool areEquivalent(Automaton *automaton1, Automaton *automaton2) {
+    if(automaton1->getType() != "DFA" || automaton2->getType() != "DFA"){
+        throw(std::invalid_argument("Both automata need to be DFAs"));
+    }
+    std::vector<State*> allStates = automaton1->getStates();
+    allStates.insert(allStates.end(), automaton2->getStates().begin(), automaton2->getStates().end());
+    std::vector<State*> acceptStates = automaton1->getAcceptStates();
+    acceptStates.insert(acceptStates.end(), automaton2->getAcceptStates().begin(), automaton2->getAcceptStates().end());
+    std::vector<char> alphabet = automaton1->getAlphabet();
+    alphabet.insert(alphabet.end(), automaton2->getAlphabet().begin(), automaton2->getAlphabet().end());
+    std::vector<Transition*> transitions = automaton1->getTransitions();
+    transitions.insert(transitions.end(), automaton2->getTransitions().begin(), automaton2->getTransitions().end());
+
+    automaton2->getStartingState()->setStarting(false);
+
+    Automaton * totalAutomaton = new Automaton("NFA", ' ',allStates, transitions, alphabet);
+    automaton2->getStartingState()->setStarting(true);
+    std::ofstream stream("../outputTable.txt");
+    std::vector<std::vector<State*>> states = totalAutomaton->TableFilling(true, stream);
+    std::cerr << states.size() << std::endl;
+    int size = 0;
+    for(std::vector<State*> subvector : states){
+        for(State* state: subvector){
+            size++;
+        }
+    }
+    return size == allStates.size();
 }
 
 
@@ -228,7 +276,10 @@ void Automaton::deleteAllUnreachableStates() {
     }
 }
 
-void Automaton::TableFilling() {
+std::vector<std::vector<State *>> Automaton::TableFilling(bool compare, std::ostream &stream) {
+    if (!compare){
+        this->deleteAllUnreachableStates();
+    }
     std::vector<std::vector<bool>> table;
     for (int i = 1; i < states.size(); i++) {
         std::vector<bool> row = {};
@@ -237,9 +288,25 @@ void Automaton::TableFilling() {
         }
         table.push_back(row);
     }
+
+
+
     bool success = true;
     while(success) {
         success = false;
+        for (int i = 0; i < table.size(); i ++) {
+            std::vector<bool> test = table[i];
+            stream << states[i+1]->getName() << ' ';
+            for (bool a : test) {
+                stream << a << ' ';
+            }
+            stream << std::endl;
+        }
+        stream << "  ";
+        for(int j = 0; j < table.back().size(); j++){
+            stream << states[j]->getName() <<  ' ';
+        }
+        stream << std::endl<<std::endl;
         for (int i = 1; i < states.size(); i++) {
             for (int j = 0; j < i; j++) {
                 if (table[i - 1][j]) {
@@ -257,7 +324,7 @@ void Automaton::TableFilling() {
         std::cerr << std::endl;
     }
     if (success){
-        return;
+        return {{}};
     }else{
         std::vector<std::vector<State*>> ToBeMerged = {};
         std::vector<State*> subvector = {};
@@ -266,6 +333,7 @@ void Automaton::TableFilling() {
                 if (!table[i-1][j]){
                     if (!(subvector.size() == 0 || std::find(subvector.begin(), subvector.end(), this->states[i]) != subvector.end() || std::find(subvector.begin(), subvector.end(), this->states[j]) != subvector.end())) {
                         ToBeMerged.push_back(subvector);
+                        subvector = {};
                     }
                     if (std::find(subvector.begin(), subvector.end(), states[i]) == subvector.end())
                         subvector.push_back(states[i]);
@@ -280,6 +348,9 @@ void Automaton::TableFilling() {
                 std::cerr << a->getName() << ' ';
             }
             std::cerr << std::endl;
+        }
+        if (compare){
+            return ToBeMerged;
         }
         for(std::vector<State*> states : ToBeMerged){
             for(Transition* transition : this->transitions){
@@ -323,7 +394,7 @@ bool Automaton::TableFillingStep(State *state1, State *state2, std::vector<std::
                 }
                 if (state != NULL){
                     for(Transition* transition2: this->states[b]->getTransitions()){
-                        if (transition2->getEnd() == otherState && !table[a-1][b]){
+                        if (transition2->getEnd() == otherState && !table[a-1][b] && transition1->getInput() == transition2->getInput()){
                             table[a-1][b] = true;
                             success = true;
                         }
@@ -334,4 +405,30 @@ bool Automaton::TableFillingStep(State *state1, State *state2, std::vector<std::
     }
     return success;
 }
+
+const std::vector<State *> &Automaton::getStates() const {
+    return states;
+}
+
+const std::vector<Transition *> &Automaton::getTransitions() const {
+    return transitions;
+}
+
+const std::vector<char> &Automaton::getAlphabet() const {
+    return alphabet;
+}
+
+const std::vector<State *> &Automaton::getAcceptStates() const {
+    return acceptStates;
+}
+
+const std::string &Automaton::getType() const {
+    return type;
+}
+
+State *Automaton::getStartingState() const {
+    return startingState;
+}
+
+
 

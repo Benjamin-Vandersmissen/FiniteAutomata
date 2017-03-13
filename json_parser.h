@@ -34,5 +34,7 @@ public:
     Automaton *getAutomaton() const;
 };
 
+Automaton* parse(std::istream& stream);
+
 
 #endif //PARSER_JSON_PARSER_H

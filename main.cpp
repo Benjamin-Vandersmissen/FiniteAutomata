@@ -3,17 +3,13 @@
 #include <fstream>
 
 int main() {
-    std::ifstream file("../test 1.json");
-    json_parser parser(file);
-    std::ofstream outputfile("../output.dot");
-    Automaton* automaton = parser.getAutomaton();
-//    automaton->deleteAllUnreachableStates();
-//    std::cerr << automaton->transition(automaton->getState("A"), "100")->getName() << std::endl;
-    for(State* state: automaton->reachableStates()){
-        std::cerr << state->getName() << std::endl;
+    std::ifstream file("../DFA1.json");
+    Automaton* a1 = parse(file);
+    file.close();
+    file.open("../DFA2.json");
+    Automaton* a2 = parse(file);
+    if (areEquivalent(a1,a2)){
+        std::cerr << "TEST" << std::endl;
     }
-    automaton->TableFilling();
-    automaton->toDotFormat(outputfile);
-    outputfile.close();
     return 0;
 }

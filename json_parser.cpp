@@ -253,3 +253,7 @@ Automaton *json_parser::getAutomaton() const {
 }
 
 
+Automaton *parse(std::istream &stream) {
+    json_parser parser(stream);
+    return parser.getAutomaton();
+}

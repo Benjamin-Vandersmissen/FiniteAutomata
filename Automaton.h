@@ -8,6 +8,7 @@
 #include <string>
 #include <algorithm>
 #include <sstream>
+#include <fstream>
 
 class State;
 
@@ -36,6 +37,8 @@ private:
     bool starting;
     std::vector<Transition*> transitions;
 public:
+    std::vector<State*> Eclose(char epsilon, std::vector<State*>& states );
+
     State(const std::string &name, bool accepting, bool starting);
 
     bool isAccepting() const;
@@ -58,6 +61,9 @@ public:
 
     void setName(const std::string &name);
 
+    void setAccepting(bool accepting);
+
+    void setStarting(bool starting);
 };
 
 
@@ -79,13 +85,28 @@ public:
               const std::vector<Transition *> &transitions, const std::vector<char> &alphabet);
 
     State* getState(std::string name);
+
+
+    State *getStartingState() const;
+
+    const std::string &getType() const;
+
+    const std::vector<State *> &getStates() const;
+
+    const std::vector<Transition *> &getTransitions() const;
+
+    const std::vector<char> &getAlphabet() const;
+
+    const std::vector<State *> &getAcceptStates() const;
+
     void toDotFormat(std::ostream& stream);
     State* transition(State* state, std::string string);
     std::vector<State*> reachableStates();
     void deleteState(State* state);
     void deleteAllUnreachableStates();
-    void TableFilling();
+    std::vector<std::vector<State *>> TableFilling(bool compare, std::ostream &stream = std::cout);
 };
 
+bool areEquivalent(Automaton *automaton1, Automaton *automaton2);
 
 #endif //PARSER_AUTOMATON_H
