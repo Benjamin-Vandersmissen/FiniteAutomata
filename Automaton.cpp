@@ -93,6 +93,16 @@ void State::setStarting(bool starting) {
     State::starting = starting;
 }
 
+std::vector<State *> State::transitionNFA(char c) {
+    std::vector<State*> states = {};
+    for(Transition* transition: this->transitions){
+        if (transition->getInput() == c){
+            states.push_back(transition->getEnd());
+        }
+    }
+    return states;
+}
+
 Transition::Transition(State* begin, State* end, char input) : begin(begin), end(end),
                                                                                        input(input) {}
 
@@ -138,13 +148,92 @@ bool areEquivalent(Automaton *automaton1, Automaton *automaton2) {
     std::ofstream stream("../outputTable.txt");
     std::vector<std::vector<State*>> states = totalAutomaton->TableFilling(true, stream);
     std::cerr << states.size() << std::endl;
-    int size = 0;
-    for(std::vector<State*> subvector : states){
-        for(State* state: subvector){
-            size++;
+    for(std::vector<State*> temp: states){
+        if (std::find(temp.begin(), temp.end(), automaton1->getStartingState()) != temp.end() && std::find(temp.begin(), temp.end(), automaton2->getStartingState()) != temp.end()){
+            return true;
         }
     }
-    return size == allStates.size();
+    return false;
+}
+
+Automaton *getNFAFromRegex(std::string regex) {
+    typedef struct{
+        std::vector<State*> states;
+        std::vector<Transition*> transtions;
+        State* start;
+        State* end;
+    }tempAutomaton;
+
+    std::vector<char> alphabet = {};
+    int statenumber = 1;
+    State* state = new State("Q0", true, true);
+    State* beginstate = state;
+    State* endstate = state;
+    State* previousstate = state;
+    char epsilon = '\u03B5';
+    std::vector<State*> states = {state};
+    std::vector<Transition*> transitions = {};
+    std::vector<State*> brackets = {};
+    State* temp = NULL;
+    for(char c : regex){
+        std::string specialChars = "()*+. ";
+        if (specialChars.find(c) == std::string::npos) {
+            if (std::find(alphabet.begin(), alphabet.end(), c) == alphabet.end()) {
+                alphabet.push_back(c);
+            }
+            previousstate = states.back();
+
+            endstate->setAccepting(false);
+            states.push_back(new State("Q" + std::to_string(statenumber), false, false));
+            transitions.push_back(new Transition(endstate, states.back(), epsilon));
+            state = states.back();
+            statenumber++;
+
+            states.push_back(new State("Q" + std::to_string(statenumber), true, false));
+            transitions.push_back(new Transition(state, states.back(), c));
+            endstate = states.back();
+            statenumber ++;
+            if (temp != NULL){
+                states.push_back(new State("Q" + std::to_string(statenumber), true, false));
+                temp->setAccepting(false);
+                endstate->setAccepting(false);
+                transitions.push_back(new Transition(endstate, states.back(), epsilon));
+                transitions.push_back(new Transition(temp, states.back(), epsilon));
+                temp = NULL;
+                endstate = states.back();
+                statenumber++;
+            }
+        }
+        else if (c == '+'){
+            temp = endstate;
+            endstate = previousstate;
+        }
+        else if (c == '*'){
+            transitions.push_back(new Transition(endstate, state, epsilon));
+            endstate->setAccepting(false);
+            states.push_back(new State("Q" + std::to_string(statenumber), true, false));
+            statenumber++;
+            transitions.push_back(new Transition(endstate, states.back(), epsilon));
+            endstate = states.back();
+            transitions.push_back(new Transition(previousstate, endstate, epsilon));
+        }
+        else if (c == '('){
+            brackets.push_back(previousstate);
+            brackets.push_back(state);
+        }
+        else if (c == ')'){
+            state = brackets.back();
+            brackets.pop_back();
+            previousstate = brackets.back();
+            brackets.pop_back();
+        }
+    }
+
+    for(char c : alphabet){
+        std::cerr << c << ' ';
+    }
+    Automaton* automaton = new Automaton("eNFA", epsilon, states, transitions, alphabet);
+    return automaton;
 }
 
 
@@ -173,7 +262,6 @@ Automaton::Automaton(const std::string &type, char epsilon, const std::vector<St
             }
         }
     }
-
     if(!test){
         throw(std::invalid_argument("The automaton needs a starting state"));
     }
@@ -225,7 +313,13 @@ void Automaton::toDotFormat(std::ostream &stream) {
         stream << "\t\"" << endstate->getName() << "\"[shape=doublecircle];" << std::endl;
     }
     for(Transition* transition : this->transitions){
-        stream << "\t\"" <<transition->getBegin()->getName() << "\" -> \"" << transition->getEnd()->getName() << "\" [label=" << transition->getInput() <<"];" << std::endl;
+        stream << "\t\"" <<transition->getBegin()->getName() << "\" -> \"" << transition->getEnd()->getName() << "\" [label=";
+        if (transition->getInput() == this->epsilon){
+            stream << "epsilon" <<"];" << std::endl;
+        }
+        else{
+            stream << transition->getInput() <<"];" << std::endl;
+        }
     }
     stream << "}" << std::endl;
 }
@@ -436,6 +530,66 @@ const std::string &Automaton::getType() const {
 
 State *Automaton::getStartingState() const {
     return startingState;
+}
+
+void Automaton::toJSon(std::ostream &stream) {
+    stream << "{" << std::endl;
+    stream << "\t\"type\": \"" << this->type << "\"," << std::endl;
+    stream << "\t\"alphabet\": [" << std::endl;
+    for(char c : this->alphabet){
+        stream << "\t\t\"" << c << "\"" ;
+        if (c != this->alphabet.back()){
+            stream << ',';
+        }
+        stream << std::endl;
+    }
+    stream << "\t]," << std::endl;
+    stream << "\t\"states\": [" << std::endl;
+    for(State* state: this->states){
+        stream << "\t\t{"<< std::endl;
+        stream << "\t\t\t\"name\": \"" << state->getName() << "\"," << std::endl;
+        std::string start = state->isStarting() ? "true" : "false";
+        stream << "\t\t\t\"starting\": " << start << "," << std::endl;
+        std::string accept = state->isAccepting() ? "true" : "false";
+        stream << "\t\t\t\"accepting\": " << accept << std::endl;
+        stream << "\t\t}";
+        if (state != states.back()){
+            stream << ',';
+        }
+        stream << std::endl;
+    }
+    stream << "\t]," << std::endl;
+    stream << "\"transitions\": [";
+    for(Transition* transition: this->transitions){
+        stream << "\t\t{" << std::endl;
+        stream << "\t\t\t\"from\": \"" << transition->getBegin()->getName() << "\"," << std::endl;
+        stream << "\t\t\t\"to\": \"" << transition->getEnd()->getName() << "\"," << std::endl;
+        stream << "\t\t\t\"input\": \"" << transition->getInput() << "\"" << std::endl;
+        stream << "\t\t}";
+        if (transition != transitions.back()){
+            stream << ',';
+        }
+        stream << std::endl;
+    }
+    stream << "\t]" << std::endl << "}" << std::endl;
+}
+
+std::vector<State *> Automaton::transitionNFA(State *state, std::string string) {
+    std::vector<State*> states = {state};
+    for(char c : string){
+        std::vector<State*> temp = {};
+        for(State* state1 : states){
+            std::set_union(temp.begin(), temp.end(), state1->transitionNFA(c).begin(), state1->transitionNFA(c).end(), temp.begin());
+        }
+        states = temp;
+    }
+    return states;
+}
+
+std::vector<State *> Automaton::Eclose(State *state) {
+    std::vector<State*> states = {state};
+    state->Eclose(this->epsilon, states);
+    return states;
 }
 
 

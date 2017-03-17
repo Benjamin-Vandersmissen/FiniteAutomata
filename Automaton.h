@@ -55,6 +55,8 @@ public:
 
     State* transition(char c);
 
+    std::vector<State*> transitionNFA(char c);
+
     State(const std::string &name);
 
     void reacheableStates(std::vector<State*>& states);
@@ -100,13 +102,25 @@ public:
     const std::vector<State *> &getAcceptStates() const;
 
     void toDotFormat(std::ostream& stream);
+
+    void toJSon(std::ostream& stream);
+
     State* transition(State* state, std::string string);
+
+    std::vector<State*> transitionNFA(State* state, std::string string);
+
     std::vector<State*> reachableStates();
+
     void deleteState(State* state);
+
     void deleteAllUnreachableStates();
+
     std::vector<std::vector<State *>> TableFilling(bool compare = false, std::ostream &stream = std::cout);
+
+    std::vector<State*> Eclose(State* state);
 };
 
 bool areEquivalent(Automaton *automaton1, Automaton *automaton2);
+Automaton* getNFAFromRegex(std::string regex);
 
 #endif //PARSER_AUTOMATON_H

@@ -1,25 +1,20 @@
 #include <iostream>
-#include "json_parser.h"
 #include <fstream>
+#include "json_parser.h"
 
-int main() {
-    std::ifstream file("../DFA1.json");
-    Automaton* a1 = parse(file);
-    file.close();
-    file.open("../DFA2.json");
-    Automaton* a2 = parse(file);
-    std::ofstream output("../DFA1.dot");
-    a1->toDotFormat(output);
-    output.close();
-    output.open("../DFA2.dot");
-    a2->toDotFormat(output);
-    output.close();
-    if (areEquivalent(a1,a2)){
-        std::cerr << "TEST" << std::endl;
+int main(int argc, char* argv[]) {
+    std::ifstream file("../eNFA.json");
+    std::ofstream DOTfile("./eNFA.dot");
+
+    Automaton* automaton = parse(file);
+    automaton->toDotFormat(DOTfile);
+    for(State* state: automaton->getStates()){
+        std::cerr << state->getName() << " ECLOSE: ";
+        std::vector<State*> states = automaton->Eclose(state);
+        for(State* s : states){
+            std::cerr << s->getName() << ' ';
+        }
+        std::cerr << std::endl;
     }
-    output.open("../test.dot");
-    a1->TableFilling(false, std::cerr);
-    a1->toDotFormat(output);
-    output.close();
     return 0;
 }
