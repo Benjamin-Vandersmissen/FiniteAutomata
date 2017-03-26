@@ -207,6 +207,7 @@ Transition *json_parser::readTransition() {
         }
     }
     if (fromState == NULL || toState == NULL){
+        std::cerr << from << ' ' << to << (fromState == NULL) << ' ' << (toState == NULL) << std::endl;
         throw(std::invalid_argument("Did not recognise that state"));
     }
     Transition* transition = new Transition(fromState, toState, input);

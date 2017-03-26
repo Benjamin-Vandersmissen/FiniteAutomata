@@ -258,6 +258,7 @@ Automaton::Automaton(const std::string &type, char epsilon, const std::vector<St
             if (this->startingState == NULL){
                 this->startingState = state;
             }else{
+                std::cerr << this->startingState->getName() << ' ' << state->getName() << std::endl;
                 throw(std::invalid_argument("The automaton can have only one starting state"));
             }
         }
@@ -534,44 +535,44 @@ State *Automaton::getStartingState() const {
 
 void Automaton::toJSon(std::ostream &stream) {
     stream << "{" << std::endl;
-    stream << "\t\"type\": \"" << this->type << "\"," << std::endl;
-    stream << "\t\"alphabet\": [" << std::endl;
+    stream << "  \"type\": \"" << this->type << "\"," << std::endl;
+    stream << "  \"alphabet\": [" << std::endl;
     for(char c : this->alphabet){
-        stream << "\t\t\"" << c << "\"" ;
+        stream << "    \"" << c << "\"" ;
         if (c != this->alphabet.back()){
             stream << ',';
         }
         stream << std::endl;
     }
-    stream << "\t]," << std::endl;
-    stream << "\t\"states\": [" << std::endl;
+    stream << "  ]," << std::endl;
+    stream << "  \"states\": [" << std::endl;
     for(State* state: this->states){
-        stream << "\t\t{"<< std::endl;
-        stream << "\t\t\t\"name\": \"" << state->getName() << "\"," << std::endl;
+        stream << "    {"<< std::endl;
+        stream << "      \"name\": \"" << state->getName() << "\"," << std::endl;
         std::string start = state->isStarting() ? "true" : "false";
-        stream << "\t\t\t\"starting\": " << start << "," << std::endl;
+        stream << "      \"starting\": " << start << "," << std::endl;
         std::string accept = state->isAccepting() ? "true" : "false";
-        stream << "\t\t\t\"accepting\": " << accept << std::endl;
-        stream << "\t\t}";
+        stream << "      \"accepting\": " << accept << std::endl;
+        stream << "    }";
         if (state != states.back()){
             stream << ',';
         }
         stream << std::endl;
     }
-    stream << "\t]," << std::endl;
+    stream << "  ]," << std::endl;
     stream << "\"transitions\": [";
     for(Transition* transition: this->transitions){
-        stream << "\t\t{" << std::endl;
-        stream << "\t\t\t\"from\": \"" << transition->getBegin()->getName() << "\"," << std::endl;
-        stream << "\t\t\t\"to\": \"" << transition->getEnd()->getName() << "\"," << std::endl;
-        stream << "\t\t\t\"input\": \"" << transition->getInput() << "\"" << std::endl;
-        stream << "\t\t}";
+        stream << "    {" << std::endl;
+        stream << "      \"from\": \"" << transition->getBegin()->getName() << "\"," << std::endl;
+        stream << "      \"to\": \"" << transition->getEnd()->getName() << "\"," << std::endl;
+        stream << "      \"input\": \"" << transition->getInput() << "\"" << std::endl;
+        stream << "    }";
         if (transition != transitions.back()){
             stream << ',';
         }
         stream << std::endl;
     }
-    stream << "\t]" << std::endl << "}" << std::endl;
+    stream << "  ]" << std::endl << "}" << std::endl;
 }
 
 std::vector<State *> Automaton::transitionNFA(State *state, std::string string) {
@@ -591,6 +592,93 @@ std::vector<State *> Automaton::Eclose(State *state) {
     state->Eclose(this->epsilon, states);
     return states;
 }
+
+void Automaton::toDFA() {
+    if (type == "NFA"){
+        //TODO: optimize maybe?
+        std::vector<std::vector<State*>> newStates = {{this->startingState}};
+        int length = 0;
+        while (length != newStates.size()){
+            length = newStates.size();
+            std::cerr << length <<std::endl;
+            std::vector<std::vector<State*>> tempstates = newStates;
+            for(char c : this->alphabet){
+                for(std::vector<State*> states : newStates  ){
+                    std::vector<State*> temp = {};
+                    for(State* state: states){
+                        for(Transition* transition : state->getTransitions()){
+                            if (transition->getInput() == c){
+                                if (std::find(temp.begin(), temp.end(), transition->getEnd()) == temp.end())
+                                temp.push_back(transition->getEnd());
+                            }
+                        }
+                    }
+                    std::sort(temp.begin(), temp.end());
+                    if (std::find(tempstates.begin(), tempstates.end(), temp) == tempstates.end()){
+                        tempstates.push_back(temp);
+                    }
+                }
+            }
+    //            for(std::vector<State*> temp: tempstates){
+    //                std::cerr << '{';
+    //                for(State* state: temp){
+    //                    std::cerr << state->getName();
+    //                    if (state != temp.back()){
+    //                        std::cerr << ',';
+    //                    }
+    //                }
+    //                std::cerr << '}' <<std::endl;
+    //            }
+    //            std::cerr << std::endl;
+            newStates = tempstates;
+        }
+        std::vector<State*> states = {};
+        std::vector<Transition*> transitions = {};
+        for(std::vector<State*> temp: newStates){
+            std::string name = "{";
+            bool starting = true;
+            bool accepting = false;
+            for(State* state: temp){
+                name += state->getName();
+                starting = starting && state->isStarting();
+                accepting = accepting || state->isAccepting();
+                if (state != temp.back()) {
+                    name += ',';
+                }
+            }
+            name += '}';
+            if (starting){
+                std::cerr << name << std::endl;
+            }
+            states.push_back(new State(name, accepting, starting));
+        }
+        for(char c : this->alphabet){
+            for(std::vector<State*> tempStates: newStates){
+                std::vector<State*> temp = {};
+                for(State* state: tempStates){
+                    for(Transition* transition : state->getTransitions()){
+                        if (transition->getInput() == c){
+                            if (std::find(temp.begin(), temp.end(), transition->getEnd()) == temp.end())
+                                temp.push_back(transition->getEnd());
+                        }
+                    }
+                }
+                std::sort(temp.begin(), temp.end());
+                int index = std::distance(newStates.begin(), std::find(newStates.begin(), newStates.end(), tempStates));
+                int index1 = std::distance(newStates.begin(), std::find(newStates.begin(), newStates.end(), temp));
+
+                transitions.push_back(new Transition(states[index],states[index1], c));
+            }
+        }
+        Automaton a = Automaton("DFA", this->epsilon, states, transitions, alphabet);
+        this->acceptStates = a.getAcceptStates();
+        this->startingState = a.getStartingState();
+        this->states = states;
+        this->transitions = transitions;
+        this->type = "DFA";
+    }
+}
+
 
 
 

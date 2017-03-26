@@ -118,6 +118,8 @@ public:
     std::vector<std::vector<State *>> TableFilling(bool compare = false, std::ostream &stream = std::cout);
 
     std::vector<State*> Eclose(State* state);
+
+    void toDFA();
 };
 
 bool areEquivalent(Automaton *automaton1, Automaton *automaton2);
