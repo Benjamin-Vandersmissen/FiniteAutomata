@@ -595,8 +595,8 @@ std::vector<State *> Automaton::Eclose(State *state) {
 
 void Automaton::toDFA() {
     if (type == "NFA"){
-        //TODO: optimize maybe?
         std::vector<std::vector<State*>> newStates = {{this->startingState}};
+        std::vector<State*> Globalstates = {new State((std::string)"{" + this->startingState->getName()+(std::string)"}", this->startingState->isAccepting(), true)};
         int length = 0;
         while (length != newStates.size()){
             length = newStates.size();
@@ -604,54 +604,34 @@ void Automaton::toDFA() {
             std::vector<std::vector<State*>> tempstates = newStates;
             for(char c : this->alphabet){
                 for(std::vector<State*> states : newStates  ){
+                    bool starting = true;
+                    bool accepting = false;
+                    std::string name = "{";
                     std::vector<State*> temp = {};
                     for(State* state: states){
                         for(Transition* transition : state->getTransitions()){
-                            if (transition->getInput() == c){
-                                if (std::find(temp.begin(), temp.end(), transition->getEnd()) == temp.end())
-                                temp.push_back(transition->getEnd());
+                            if (transition->getInput() == c) {
+                                if (std::find(temp.begin(), temp.end(), transition->getEnd()) == temp.end()) {
+                                    temp.push_back(transition->getEnd());
+                                    name += temp.back()->getName();
+                                    name += ',';
+                                    starting = starting && temp.back()->isStarting();
+                                    accepting = accepting || temp.back()->isAccepting();
+                                }
                             }
                         }
                     }
                     std::sort(temp.begin(), temp.end());
                     if (std::find(tempstates.begin(), tempstates.end(), temp) == tempstates.end()){
+                        name.back() = '}';
                         tempstates.push_back(temp);
+                        Globalstates.push_back(new State(name, accepting, starting));
                     }
                 }
             }
-    //            for(std::vector<State*> temp: tempstates){
-    //                std::cerr << '{';
-    //                for(State* state: temp){
-    //                    std::cerr << state->getName();
-    //                    if (state != temp.back()){
-    //                        std::cerr << ',';
-    //                    }
-    //                }
-    //                std::cerr << '}' <<std::endl;
-    //            }
-    //            std::cerr << std::endl;
             newStates = tempstates;
         }
-        std::vector<State*> states = {};
         std::vector<Transition*> transitions = {};
-        for(std::vector<State*> temp: newStates){
-            std::string name = "{";
-            bool starting = true;
-            bool accepting = false;
-            for(State* state: temp){
-                name += state->getName();
-                starting = starting && state->isStarting();
-                accepting = accepting || state->isAccepting();
-                if (state != temp.back()) {
-                    name += ',';
-                }
-            }
-            name += '}';
-            if (starting){
-                std::cerr << name << std::endl;
-            }
-            states.push_back(new State(name, accepting, starting));
-        }
         for(char c : this->alphabet){
             for(std::vector<State*> tempStates: newStates){
                 std::vector<State*> temp = {};
@@ -667,13 +647,13 @@ void Automaton::toDFA() {
                 int index = std::distance(newStates.begin(), std::find(newStates.begin(), newStates.end(), tempStates));
                 int index1 = std::distance(newStates.begin(), std::find(newStates.begin(), newStates.end(), temp));
 
-                transitions.push_back(new Transition(states[index],states[index1], c));
+                transitions.push_back(new Transition(Globalstates[index],Globalstates[index1], c));
             }
         }
-        Automaton a = Automaton("DFA", this->epsilon, states, transitions, alphabet);
+        Automaton a = Automaton("DFA", this->epsilon, Globalstates, transitions, alphabet);
         this->acceptStates = a.getAcceptStates();
         this->startingState = a.getStartingState();
-        this->states = states;
+        this->states = Globalstates;
         this->transitions = transitions;
         this->type = "DFA";
     }
