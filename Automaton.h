@@ -103,7 +103,7 @@ public:
 
     void toDotFormat(std::ostream& stream);
 
-    void toJSon(std::ostream& stream);
+    void toJson(std::ostream &stream);
 
     State* transition(State* state, std::string string);
 

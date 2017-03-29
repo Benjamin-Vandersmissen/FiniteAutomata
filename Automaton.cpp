@@ -533,7 +533,7 @@ State *Automaton::getStartingState() const {
     return startingState;
 }
 
-void Automaton::toJSon(std::ostream &stream) {
+void Automaton::toJson(std::ostream &stream) {
     stream << "{" << std::endl;
     stream << "  \"type\": \"" << this->type << "\"," << std::endl;
     stream << "  \"alphabet\": [" << std::endl;
